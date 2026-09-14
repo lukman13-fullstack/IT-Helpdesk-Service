@@ -1,0 +1,461 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model user {
+  id                      Int                       @id @default(autoincrement())
+  fullName                String                    @map("full_name")
+  username                String
+  email                   String?
+  password                String
+  roleId                  Int                       @map("role_id")
+  position                String?
+  tokenVersion            Int                       @default(0) @map("token_version")
+  isDeleted               Boolean                   @default(false) @map("is_deleted")
+  createdAt               DateTime                  @default(now()) @map("created_at")
+  updatedAt               DateTime                  @updatedAt @map("updated_at")
+  approvedDocuments       digital_approval[]        @relation("ApprovedByRelation")
+  approvals               digital_approval[]        @relation("ApproverRelation")
+  createdApprovals        digital_approval[]        @relation("CreatorRelation")
+  documentChanges         document_history[]        @relation("ChangerDocumentHistories")
+  referenceCheckApprovals document_reference_link[] @relation("ReferenceCheckApprover")
+  referenceChecks         document_reference[]      @relation("ReferenceChecker")
+  uploadedDocuments       document[]                @relation("UploaderDocuments")
+  hierarchies             hierarchy[]
+  categoryHierarchies     category_hierarchy[]
+  logs                    log[]
+  magicTokens             magic_token[]
+  notifications           notification[]
+  approvedPrintRequests   print_request[]           @relation("ApproverPrintRelation")
+  printRequests           print_request[]           @relation("RequesterPrintRelation")
+  departments             user_department[]
+  role                    role                      @relation(fields: [roleId], references: [id])
+  documentDrafts          document_draft[]
+
+  @@index([roleId], map: "users_role_id_fkey")
+  @@map("users")
+}
+
+model user_department {
+  userId       Int        @map("user_id")
+  departmentId Int        @map("department_id")
+  assignedAt   DateTime   @default(now()) @map("assigned_at")
+  deletedAt    DateTime?  @map("deleted_at")
+  isDeleted    Boolean    @default(false) @map("is_deleted")
+  department   department @relation(fields: [departmentId], references: [id])
+  user         user       @relation(fields: [userId], references: [id])
+
+  @@id([userId, departmentId])
+  @@index([departmentId], map: "user_departments_department_id_fkey")
+  @@map("user_departments")
+}
+
+model hierarchy {
+  id           Int                @id @default(autoincrement())
+  userId       Int                @map("user_id")
+  level        Int                @map("level")
+  departmentId Int                @map("department_id")
+  isDeleted    Boolean            @default(false) @map("is_deleted")
+  createdAt    DateTime           @default(now()) @map("created_at")
+  updatedAt    DateTime           @updatedAt @map("updated_at")
+  approvals    digital_approval[]
+  department   department         @relation(fields: [departmentId], references: [id])
+  user         user               @relation(fields: [userId], references: [id])
+
+  @@unique([departmentId, level])
+  @@index([userId], map: "hierarchies_user_id_fkey")
+  @@map("hierarchies")
+}
+
+// Category-specific hierarchy for approval per document category
+model category_hierarchy {
+  id           Int                @id @default(autoincrement())
+  departmentId Int                @map("department_id")
+  category     DocumentCategory
+  level        Int                @map("level")
+  userId       Int                @map("user_id")
+  isDeleted    Boolean            @default(false) @map("is_deleted")
+  createdAt    DateTime           @default(now()) @map("created_at")
+  updatedAt    DateTime           @updatedAt @map("updated_at")
+  approvals    digital_approval[]
+  department   department         @relation(fields: [departmentId], references: [id])
+  user         user               @relation(fields: [userId], references: [id])
+
+  @@unique([departmentId, category, level])
+  @@index([departmentId], map: "category_hierarchies_department_id_fkey")
+  @@index([userId], map: "category_hierarchies_user_id_fkey")
+  @@map("category_hierarchies")
+}
+
+model department {
+  id             Int               @id @default(autoincrement())
+  name           String
+  description    String?
+  isDeleted      Boolean           @default(false) @map("is_deleted")
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+  status         String            @default("active")
+  departmentCode String?           @map("department_code")
+  documents           document[]
+  hierarchies         hierarchy[]
+  categoryHierarchies category_hierarchy[]
+  logs                log[]
+  users               user_department[]
+
+  @@map("departments")
+}
+
+model document {
+  id                               Int                       @id @default(autoincrement())
+  name                             String
+  description                      String?                   @db.Text
+  documentCode                     String                    @map("document_code")
+  documentNumber                   Int                       @map("document_number")
+  category                         DocumentCategory
+  googleDriveFileId                String?                   @map("google_drive_file_id")
+  googleDriveFinalFileId           String?                   @map("google_drive_final_file_id")
+  filePath                         String?                   @map("file_path")
+  fileSize                         Int?                      @map("file_size")
+  mimeType                         String?                   @default("application/pdf") @map("mime_type")
+  departmentId                     Int                       @map("department_id")
+  uploadedBy                       Int                       @map("uploaded_by")
+  version                          Int                       @default(1)
+  revision                         Int                       @default(0)
+  status                           String                    @default("draft")
+  releaseDate                      DateTime?                 @map("release_date")
+  qrCodeData                       String?                   @map("qr_code_data") @db.Text
+  isDeleted                        Boolean                   @default(false) @map("is_deleted")
+  createdAt                        DateTime                  @default(now()) @map("created_at")
+  updatedAt                        DateTime                  @updatedAt @map("updated_at")
+  isInternal                       Boolean                   @default(false) @map("is_internal")
+  proposalObjective                String?                   @map("proposal_objective")
+  masterDocumentFileSize           Int?                      @map("master_document_file_size")
+  masterDocumentGoogleDriveId      String?                   @map("master_document_google_drive_id")
+  masterDocumentMimeType           String?                   @map("master_document_mime_type")
+  masterDocumentPath               String?                   @map("master_document_path")
+  isPublished                      Boolean                   @default(true) @map("is_published")
+  isRawDownloadable                Boolean                   @default(false) @map("is_raw_downloadable")
+  deletionReason                   String?                   @map("deletion_reason") @db.Text
+  googleDriveControlledVersionId   String?                   @map("google_drive_controlled_version_id")
+  googleDriveMasterVersionId       String?                   @map("google_drive_master_version_id")
+  googleDriveUncontrolledVersionId String?                   @map("google_drive_uncontrolled_version_id")
+  dateOfIssue                      DateTime?                 @map("date_of_issue")
+  documentFormat                   DocumentFormat?           @map("document_format")
+  documentStoragePeriod            Int?                      @map("document_storage_period")
+  expiredDate                      DateTime?                 @map("expired_date")
+  hardDocumentRetentionPeriod      String?                   @map("hard_document_retention_period")
+  hardDocumentStorageLocation      String?                   @map("hard_document_storage_location")
+  publishingInstitution            String?                   @map("publishing_institution")
+  retentionPeriod                  String?                   @map("retention_period")
+  storageLocation                  String?                   @map("storage_location")
+  remark                           String?                   @db.Text
+  destination                      String?                   @map("destination")
+  approvals                        digital_approval[]
+  history                          document_history[]
+  references                       document_reference_link[]
+  workInstructionTemplates         work_instruction_template[]
+  department                       department                @relation(fields: [departmentId], references: [id])
+  uploader                         user                      @relation("UploaderDocuments", fields: [uploadedBy], references: [id])
+  notifications                    notification[]
+  printRequests                    print_request[]
+
+  @@index([departmentId], map: "documents_department_id_fkey")
+  @@index([uploadedBy], map: "documents_uploaded_by_fkey")
+  @@map("documents")
+}
+
+model document_history {
+  id                          Int      @id @default(autoincrement())
+  documentId                  Int      @map("document_id")
+  version                     Int
+  revision                    Int
+  googleDriveFileId           String?  @map("google_drive_file_id")
+  filePath                    String?  @map("file_path")
+  fileSize                    Int?     @map("file_size")
+  changeDescription           String?  @map("change_description") @db.Text
+  changedBy                   Int      @map("changed_by")
+  createdAt                   DateTime @default(now()) @map("created_at")
+  description                 String?  @db.Text
+  masterDocumentFileSize      Int?     @map("master_document_file_size")
+  masterDocumentGoogleDriveId String?  @map("master_document_google_drive_id")
+  masterDocumentMimeType      String?  @map("master_document_mime_type")
+  masterDocumentPath          String?  @map("master_document_path")
+  mimeType                    String?  @map("mime_type")
+  name                        String?
+  destination                 String?  @map("destination")
+  releaseDate                 DateTime? @map("release_date")
+  changer                     user     @relation("ChangerDocumentHistories", fields: [changedBy], references: [id])
+  document                    document @relation(fields: [documentId], references: [id])
+
+  @@index([changedBy], map: "document_histories_changed_by_fkey")
+  @@index([documentId], map: "document_histories_document_id_fkey")
+  @@map("document_histories")
+}
+
+model digital_approval {
+  id                  Int                 @id @default(autoincrement())
+  documentId          Int                 @map("document_id")
+  hierarchyId         Int?                @map("hierarchy_id")
+  categoryHierarchyId Int?                @map("category_hierarchy_id")
+  approverId          Int                 @map("approver_id")
+  level               Int
+  status              String              @default("pending")
+  comments            String?             @db.Text
+  approvedAt          DateTime?           @map("approved_at")
+  approvedBy          Int?                @map("approved_by")
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+  type                String              @default("approval")
+  createdBy           Int                 @map("created_by")
+  reason              String?             @db.Text
+  printRequestId      Int?                @map("print_request_id")
+  documentRevision    Int                 @default(0) @map("document_revision")
+  batchId             String?             @map("batch_id")
+  approvedByUser      user?               @relation("ApprovedByRelation", fields: [approvedBy], references: [id])
+  approver            user                @relation("ApproverRelation", fields: [approverId], references: [id])
+  creator             user                @relation("CreatorRelation", fields: [createdBy], references: [id])
+  document            document            @relation(fields: [documentId], references: [id])
+  hierarchy           hierarchy?          @relation(fields: [hierarchyId], references: [id])
+  categoryHierarchy   category_hierarchy? @relation(fields: [categoryHierarchyId], references: [id])
+  printRequest        print_request?      @relation(fields: [printRequestId], references: [id])
+
+  @@unique([documentId, approverId, type, documentRevision, printRequestId])
+  @@index([documentId], map: "digital_approvals_document_id_fkey")
+  @@index([approvedBy], map: "digital_approvals_approved_by_fkey")
+  @@index([approverId], map: "digital_approvals_approver_id_fkey")
+  @@index([createdBy], map: "digital_approvals_created_by_fkey")
+  @@index([hierarchyId], map: "digital_approvals_hierarchy_id_fkey")
+  @@index([categoryHierarchyId], map: "digital_approvals_category_hierarchy_id_fkey")
+  @@index([printRequestId], map: "digital_approvals_print_request_id_fkey")
+  @@map("digital_approvals")
+}
+
+model role {
+  id          Int               @id @default(autoincrement())
+  name        String            @unique
+  description String?
+  isDeleted   Boolean           @default(false) @map("is_deleted")
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+  permissions role_permission[]
+  users       user[]
+
+  @@map("roles")
+}
+
+model permission {
+  id          Int               @id @default(autoincrement())
+  name        String            @unique
+  description String?
+  isDeleted   Boolean           @default(false) @map("is_deleted")
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+  roles       role_permission[]
+
+  @@map("permissions")
+}
+
+model role_permission {
+  id           Int        @id @default(autoincrement())
+  roleId       Int        @map("role_id")
+  permissionId Int        @map("permission_id")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+  permission   permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  role         role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([permissionId], map: "role_permissions_permission_id_fkey")
+  @@map("role_permissions")
+}
+
+model notification {
+  id         Int       @id @default(autoincrement())
+  userId     Int       @map("user_id")
+  type       String
+  title      String
+  message    String    @db.Text
+  documentId Int?      @map("document_id")
+  isRead     Boolean   @default(false) @map("is_read")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  document   document? @relation(fields: [documentId], references: [id])
+  user       user      @relation(fields: [userId], references: [id])
+
+  @@index([documentId], map: "notifications_document_id_fkey")
+  @@index([userId], map: "notifications_user_id_fkey")
+  @@map("notifications")
+}
+
+model log {
+  id           Int         @id @default(autoincrement())
+  action       String
+  description  String      @db.Text
+  userId       Int         @map("user_id")
+  createdAt    DateTime    @default(now()) @map("created_at")
+  departmentId Int?        @map("department_id")
+  department   department? @relation(fields: [departmentId], references: [id])
+  user         user        @relation(fields: [userId], references: [id])
+
+  @@index([departmentId], map: "logs_department_id_fkey")
+  @@index([userId], map: "logs_user_id_fkey")
+  @@map("logs")
+}
+
+model print_request {
+  id               Int                @id @default(autoincrement())
+  documentId       Int                @map("document_id")
+  requesterId      Int                @map("requester_id")
+  status           String             @default("pending")
+  reason           String?            @db.Text
+  approvedBy       Int?               @map("approved_by")
+  approvedAt       DateTime?          @map("approved_at")
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+  copies           Int                @default(1)
+  storageLocation  String?            @map("storage_location")
+  isInternal       Boolean            @default(true) @map("is_internal")
+  expiresAt        DateTime?          @map("expires_at")
+  printedAt        DateTime?          @map("printed_at")
+  readyAt          DateTime?          @map("ready_at")
+  picTaken         String?            @map("pic_taken")
+  takenAt          DateTime?          @map("taken_at")
+  distribution     Distribution?      @default(Internal)
+  numberRevision   String?            @map("number_revision")
+  qtyDocument      Int?               @map("qty_document")
+  digitalApprovals digital_approval[]
+  approver         user?              @relation("ApproverPrintRelation", fields: [approvedBy], references: [id])
+  document         document           @relation(fields: [documentId], references: [id])
+  requester        user               @relation("RequesterPrintRelation", fields: [requesterId], references: [id])
+
+  @@index([expiresAt])
+  @@index([documentId, requesterId, isInternal])
+  @@index([approvedBy], map: "print_requests_approved_by_fkey")
+  @@index([requesterId], map: "print_requests_requester_id_fkey")
+  @@map("print_requests")
+}
+
+model document_reference {
+  id          Int                       @id @default(autoincrement())
+  name        String                    @unique
+  code        String                    @unique
+  description String?
+  checkerId   Int?                      @map("checker_id")
+  isActive    Boolean                   @default(true) @map("is_active")
+  createdAt   DateTime                  @default(now()) @map("created_at")
+  updatedAt   DateTime                  @updatedAt @map("updated_at")
+  documents   document_reference_link[]
+  checker     user?                     @relation("ReferenceChecker", fields: [checkerId], references: [id])
+
+  @@index([checkerId], map: "document_references_checker_id_fkey")
+  @@map("document_references")
+}
+
+model document_reference_link {
+  id               Int                @id @default(autoincrement())
+  documentId       Int                @map("document_id")
+  referenceId      Int                @map("reference_id")
+  status           String             @default("pending")
+  comments         String?            @db.Text
+  checkedAt        DateTime?          @map("checked_at")
+  checkedBy        Int?               @map("checked_by")
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+  documentRevision Int                @default(0) @map("document_revision")
+  checker          user?              @relation("ReferenceCheckApprover", fields: [checkedBy], references: [id])
+  document         document           @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  reference        document_reference @relation(fields: [referenceId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, referenceId, documentRevision])
+  @@index([documentId], map: "document_reference_links_document_id_fkey")
+  @@index([referenceId], map: "document_reference_links_reference_id_fkey")
+  @@index([checkedBy], map: "document_reference_links_checked_by_fkey")
+  @@map("document_reference_links")
+}
+
+model magic_token {
+  id        Int       @id @default(autoincrement())
+  token     String    @unique @db.VarChar(64)
+  userId    Int       @map("user_id")
+  targetUrl String    @map("target_url") @db.Text
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  user      user      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("magic_tokens")
+}
+
+enum DocumentCategory {
+  form
+  standard
+  instruksi_kerja
+  prosedur
+  manual_perusahaan
+  manual_halal
+  external
+}
+
+enum DocumentFormat {
+  digital_document
+  hard_document
+  digital_and_hard_document
+}
+
+enum Distribution {
+  Internal
+  External
+}
+
+model work_instruction_template {
+  id               Int      @id @default(autoincrement())
+  documentId       Int      @map("document_id")
+  version          Int
+  revision         Int
+  
+  templateData     Json     @map("template_data")
+  styleData        Json?    @map("style_data")
+  sectionCount     Int      @default(0) @map("section_count")
+  attachmentCount  Int      @default(0) @map("attachment_count")
+  isActive         Boolean  @default(true) @map("is_active")
+  
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  
+  document         document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  
+  @@unique([documentId, version, revision])
+  @@index([documentId, isActive])
+  @@map("work_instruction_templates")
+}
+
+model wi_template_image {
+  id        Int      @id @default(autoincrement())
+  data      Bytes
+  mimeType  String   @map("mime_type") @db.VarChar(100)
+  fileName  String   @map("file_name") @db.VarChar(255)
+  fileSize  Int      @map("file_size")
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  @@map("wi_template_images")
+}
+
+model document_draft {
+  id          String   @id @default(uuid())
+  title       String?
+  data        Json
+  createdById Int      @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  createdBy   user     @relation(fields: [createdById], references: [id])
+
+  @@index([createdById])
+  @@map("document_drafts")
+}
