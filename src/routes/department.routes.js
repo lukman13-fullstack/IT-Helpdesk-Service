@@ -18,20 +18,7 @@ router.post(
   departmentController.create
 );
 
-// Category Hierarchy Routes - MUST come before /:id
-router.get("/:id/category-hierarchies", departmentController.getCategoryHierarchies);
-router.post(
-  "/:id/category-hierarchies",
-  checkPermission("MANAGE_DEPARTMENTS"),
-  departmentController.saveCategoryHierarchy
-);
-router.delete(
-  "/:id/category-hierarchies/:category",
-  checkPermission("MANAGE_DEPARTMENTS"),
-  departmentController.deleteCategoryHierarchy
-);
 
-// Specific /:id routes - put after sub-routes
 router.get("/:id", departmentController.getById);
 router.put(
   "/:id",

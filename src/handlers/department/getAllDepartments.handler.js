@@ -48,10 +48,11 @@ const getAllDepartmentsHandler = async (req, res) => {
           },
           _count: {
             select: {
-              documents: {
+              tickets: {
                 where: {
-                  isPublished: true,
-                  isDeleted: false,
+                  status: {
+                    not: "CLOSED"
+                  }
                 },
               },
             },
@@ -81,7 +82,7 @@ const getAllDepartmentsHandler = async (req, res) => {
         updatedAt: dept.updatedAt,
         _count: {
           users: activeUsersCount,
-          documents: dept._count.documents,
+          tickets: dept._count.tickets,
         },
       };
     });

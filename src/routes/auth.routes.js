@@ -1,7 +1,6 @@
 const express = require("express");
 const router = express.Router();
 const authController = require("../controllers/auth.controller");
-const magicLinkHandler = require("../handlers/auth/magicLink.handler");
 const { verifyToken } = require("../middleware/auth");
 const {
   loginValidator,
@@ -16,9 +15,6 @@ router.post(
   refreshTokenValidator,
   authController.refreshToken
 );
-
-// Magic link auto-login (public)
-router.get("/magic/:token", magicLinkHandler);
 
 // Protected routes
 router.post("/logout", verifyToken, authController.logout);

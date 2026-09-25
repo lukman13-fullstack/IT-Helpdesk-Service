@@ -17,20 +17,6 @@ const createDepartmentValidator = (req, res, next) => {
     errors.push("Nama department minimal 2 karakter");
   }
 
-  if (req.body.hierarchies) {
-    if (!Array.isArray(req.body.hierarchies)) {
-      errors.push("Hierarchies harus berupa array");
-    } else {
-      req.body.hierarchies.forEach((h, index) => {
-        if (!h.userId || !h.level) {
-          errors.push(
-            `Hierarchy pada index ${index} tidak valid (perlu userId dan level)`
-          );
-        }
-      });
-    }
-  }
-
   if (errors.length > 0) {
     return res.status(400).json({
       status: "error",
@@ -64,20 +50,6 @@ const updateDepartmentValidator = (req, res, next) => {
     errors.push("Nama department harus diisi");
   } else if (name.length < 2) {
     errors.push("Nama department minimal 2 karakter");
-  }
-
-  if (req.body.hierarchies) {
-    if (!Array.isArray(req.body.hierarchies)) {
-      errors.push("Hierarchies harus berupa array");
-    } else {
-      req.body.hierarchies.forEach((h, index) => {
-        if (!h.userId || !h.level) {
-          errors.push(
-            `Hierarchy pada index ${index} tidak valid (perlu userId dan level)`
-          );
-        }
-      });
-    }
   }
 
   if (errors.length > 0) {

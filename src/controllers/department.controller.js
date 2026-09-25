@@ -4,9 +4,6 @@ const {
   createDepartmentHandler,
   updateDepartmentHandler,
   deleteDepartmentHandler,
-  getCategoryHierarchiesHandler,
-  saveCategoryHierarchyHandler,
-  deleteCategoryHierarchyHandler,
 } = require("../handlers");
 
 const departmentController = {
@@ -15,9 +12,6 @@ const departmentController = {
   create: createDepartmentHandler,
   update: updateDepartmentHandler,
   delete: deleteDepartmentHandler,
-  getCategoryHierarchies: getCategoryHierarchiesHandler,
-  saveCategoryHierarchy: saveCategoryHierarchyHandler,
-  deleteCategoryHierarchy: deleteCategoryHierarchyHandler,
 };
 
 module.exports = departmentController;

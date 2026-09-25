@@ -6,7 +6,6 @@ const path = require("path");
 dotenv.config();
 
 const routes = require("./routes");
-const { initCronJobs } = require("./services/cron.service");
 const app = express();
 
 // Middleware
@@ -34,10 +33,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// Public Routes (no authentication required)
-const publicRoutes = require("./routes/public.routes");
-app.use("/api/public", publicRoutes);
-
 // Routes (with authentication)
 app.use("/api", routes);
 
@@ -50,6 +45,4 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
-  // Initialize scheduled jobs
-  initCronJobs();
 });

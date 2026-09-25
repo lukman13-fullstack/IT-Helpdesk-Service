@@ -37,22 +37,7 @@ const getDepartmentByIdHandler = async (req, res) => {
             },
           },
         },
-        hierarchies: {
-          where: { isDeleted: false },
-          select: {
-            id: true,
-            level: true,
-            user: {
-              select: {
-                id: true,
-                username: true,
-                fullName: true,
-                email: true,
-              },
-            },
-          },
-          orderBy: { level: "asc" },
-        },
+
       },
     });
 

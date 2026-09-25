@@ -1,12 +1,10 @@
 const express = require("express");
 const router = express.Router();
+const notificationController = require("../controllers/notification.controller");
 const { verifyToken } = require("../middleware/auth");
-const getNotificationsHandler = require("../handlers/notification/getNotifications.handler");
-const markNotificationAsReadHandler = require("../handlers/notification/markNotificationAsRead.handler");
-const markAllNotificationsAsReadHandler = require("../handlers/notification/markAllNotificationsAsRead.handler");
 
-router.get("/", verifyToken, getNotificationsHandler);
-router.patch("/:id/read", verifyToken, markNotificationAsReadHandler);
-router.patch("/read-all", verifyToken, markAllNotificationsAsReadHandler);
+router.use(verifyToken);
+router.get("/", notificationController.getAll);
+router.put("/:id/read", notificationController.markAsRead);
 
 module.exports = router;

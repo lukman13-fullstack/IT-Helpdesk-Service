@@ -3,7 +3,7 @@ const { logCreate } = require("../../utils/logger");
 
 const createDepartmentHandler = async (req, res) => {
   try {
-    const { name, description, hierarchies, departmentCode } = req.body;
+    const { name, description, departmentCode } = req.body;
 
     if (!name) {
       return res.status(400).json({
@@ -41,31 +41,6 @@ const createDepartmentHandler = async (req, res) => {
       });
     }
 
-    if (hierarchies && Array.isArray(hierarchies) && hierarchies.length > 0) {
-      const levels = hierarchies.map((h) => h.level);
-      const uniqueLevels = new Set(levels);
-      if (levels.length !== uniqueLevels.size) {
-        return res.status(400).json({
-          status: "error",
-          message: "Level hierarchy tidak boleh duplikat dalam satu department",
-          data: null,
-        });
-      }
-
-      const userIds = hierarchies.map((h) => parseInt(h.userId));
-      const usersCount = await prisma.user.count({
-        where: { id: { in: userIds } },
-      });
-
-      if (usersCount !== userIds.length) {
-        return res.status(400).json({
-          status: "error",
-          message: "Satu atau lebih user tidak ditemukan",
-          data: null,
-        });
-      }
-    }
-
     const status = "active";
 
     const department = await prisma.department.create({
@@ -74,27 +49,6 @@ const createDepartmentHandler = async (req, res) => {
         description,
         departmentCode,
         status,
-        hierarchies: {
-          create:
-            hierarchies?.map((h) => ({
-              level: parseInt(h.level),
-              user: { connect: { id: parseInt(h.userId) } },
-            })) || [],
-        },
-      },
-      include: {
-        hierarchies: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                username: true,
-                fullName: true,
-              },
-            },
-          },
-          orderBy: { level: "asc" },
-        },
       },
     });
 
@@ -106,7 +60,6 @@ const createDepartmentHandler = async (req, res) => {
         name,
         description,
         departmentCode,
-        hierarchies,
         status,
       },
       `Department baru dibuat: ${name} (${status})`
