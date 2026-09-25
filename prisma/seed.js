@@ -10,9 +10,6 @@ async function main() {
     await prisma.user_token.deleteMany({});
     await prisma.log.deleteMany({});
     
-    await prisma.user_section.deleteMany({});
-    await prisma.section.deleteMany({});
-    
     await prisma.user_department.deleteMany({});
     await prisma.user.deleteMany({});
 
@@ -77,15 +74,7 @@ async function main() {
       },
     });
 
-    console.log("Creating sections...");
-    const sectionHelpdesk = await prisma.section.create({
-      data: {
-        departmentId: deptIT.id,
-        name: "Helpdesk",
-        sectionCode: "HD-01",
-        description: "IT Helpdesk Support",
-      },
-    });
+
 
     console.log("Creating users...");
     const hashedPassword = await bcrypt.hash("password123", 10);
@@ -135,12 +124,7 @@ async function main() {
       },
     });
 
-    await prisma.user_section.create({
-      data: {
-        userId: adminUser.id,
-        sectionId: sectionHelpdesk.id,
-      },
-    });
+
 
     console.log("Seeding finished successfully.");
   } catch (error) {
